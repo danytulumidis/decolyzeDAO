@@ -1,0 +1,24 @@
+{
+  "name": "decolyzedao",
+  "version": "1.0.0",
+  "description": "A DAO fully specialized on pushing decentralization and make the Web a better place for the users.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dextavision/decolyzeDAO.git"
+  },
+  "keywords": [
+    "Decentralization",
+    "DAO",
+    "Web3"
+  ],
+  "author": "Dany Tulumidis",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Dextavision/decolyzeDAO/issues"
+  },
+  "homepage": "https://github.com/Dextavision/decolyzeDAO#readme"
+}
