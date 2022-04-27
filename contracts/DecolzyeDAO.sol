@@ -1,14 +1,12 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Proposals.sol";
 
-contract DecolyzeDAO is Proposals {
+contract DecolyzeDAO is Proposals, Ownable {
     
-    enum VoteType {
-        YES,
-        NO
-    }
+    
 
     enum IdeaType {
         DAO,
@@ -45,31 +43,73 @@ contract DecolyzeDAO is Proposals {
     mapping(uint256 => address) public candidateToUser;
 
     uint256 public totalProposals;
+    uint8 public firstTenMembers;
 
-    modifier membersOnly(address _user) {
-        require(members[_user].joinedAt > 0, "NOT_A_MEMBER");
+    modifier membersOnly() {
+        require(members[msg.sender].joinedAt > 0, "NOT_A_MEMBER");
         _;
-    }
-
-    function enterDAO() public {
-
-    }
-
-    function leaveDAO() public membersOnly(msg.sender) {
-
     }
 
     function _addMemberToDAO() private {
 
     }
 
-    function _createProposal(ProposalType _proposalType, address _user) public {
+    function createProposal(ProposalType _proposalType, string memory _name, string[] memory _skills) external {
+
+        Proposal storage proposal = proposals[totalProposalCount];
+        proposal.deadline = block.timestamp + 7 days;
+        proposal.proposalType = _proposalType;
         
         if (_proposalType == ProposalType.MEMBERSHIP) {
-            require(members[_user].joinedAt == 0, "ALREADY_MEMBER");
+            require(members[msg.sender].joinedAt == 0, "ALREADY_MEMBER");
+            require(candidates[msg.sender].requestTime == 0, "ALREADY_REQUESTED_MEMBERSHIP");
+            Candidates storage candidate = candidates[msg.sender];
+            candidate.name = _name;
+            candidate.requestTime = block.timestamp;
+            candidate.skills = _skills;
         }
 
-        _createNewProposal(_proposalType);
+        memberProposalCount[msg.sender]++;
+
+        _createNewProposal(proposal);
+    }
+
+    function voteOnProposal(uint256 _proposalID, VoteType _vote) external membersOnly {
+        Proposal storage proposal = proposals[_proposalID];
+        require(proposal.userVoted[msg.sender] == false, "ALREADY_VOTED");
+        require(proposal.deadline > block.timestamp, "DEADLINE_OVER");
+
+        _voteOnProposal(proposal, _vote);
+    }
+
+    function executeProposal(uint256 _proposalID) external membersOnly {
+        Proposal storage proposal = proposals[_proposalID];
+
+        if (proposal.proposalType == ProposalType.MEMBERSHIP) {
+            if (proposal.yesVotes > proposal.noVotes) {
+                require(members[msg.sender].joinedAt == 0, "ALREADY_MEMBER");
+                _addMemberToDAO();
+            }
+        }
+    }
+
+    function leaveDAO() public membersOnly() {
+        // Must be Member for a minimum of 7 Days
+        uint256 minimumTime = block.timestamp - 7 days;
+        require(members[msg.sender].joinedAt > minimumTime, "MIN_MEMBERSHIP_REQUIRED");
+
+        delete members[msg.sender];
+    }
+
+
+    function addFirstMembers(address _newMember ,string calldata _name, string[] calldata _skills) external onlyOwner {
+        require(firstTenMembers <= 9, "INITIAL_MEMBERSHIP_DONE");
+        Member storage member = members[_newMember];
+        member.joinedAt = block.timestamp;
+        member.name = _name;
+        member.skills = _skills;
+
+        firstTenMembers++;
     }
 
     receive() external payable {}

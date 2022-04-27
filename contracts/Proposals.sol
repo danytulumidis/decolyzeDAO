@@ -11,42 +11,48 @@ contract Proposals {
         DAO
     }
 
+    enum VoteType {
+        YES,
+        NO
+    }
+
     struct Proposal {
         uint256 deadline;
         uint256 yesVotes;
         uint256 noVotes;
         ProposalType proposalType;
         bool executed;
+        mapping(address => bool) userVoted;
     }
 
     mapping(uint256 => Proposal) public proposals;
     mapping(address => uint256) public memberProposalCount;
-    mapping(address => uint256) public userVotingToProposal;
     mapping(uint256 => address) public proposalToUser;
 
     uint256 public totalProposalCount;
 
-    function _createNewProposal(ProposalType _proposalType) internal {
-        Proposal storage proposal = proposals[totalProposalCount];
-        proposal.deadline = block.timestamp + 7 days;
-        proposal.proposalType = _proposalType;
+    function _createNewProposal(Proposal storage _proposal) internal {
+        Proposal storage proposal = _proposal;
 
         proposalToUser[totalProposalCount] = msg.sender;
         memberProposalCount[msg.sender]++;
 
-        if (_proposalType == ProposalType.MEMBERSHIP) {
-            _createMembershipProposal(proposals[totalProposalCount]);
-        }
-
         totalProposalCount++;
         
-        emit ProposalCreated(totalProposalCount - 1, _proposalType);
+        emit ProposalCreated(totalProposalCount - 1, proposal.proposalType);
     }
 
-    function _createMembershipProposal(Proposal storage _proposal) private {
-        require(_proposal.proposalType == ProposalType.MEMBERSHIP, "WRONG_PROPOSAL_TYPE");
-        
-    }
+    function _voteOnProposal(Proposal storage _proposal, VoteType _vote) internal {
+        Proposal storage proposal = _proposal;
+        require(proposal.userVoted[msg.sender] == false, "ALREADY_VOTED");
+        require(proposal.deadline > block.timestamp, "DEADLINE_OVER");
 
-    function executeProposal() public {}
+        proposal.userVoted[msg.sender] = true;
+
+        if (_vote == VoteType.YES) {
+            proposal.yesVotes++;
+        } else {
+            proposal.noVotes++;
+        }
+    }
 }
