@@ -5,8 +5,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Proposals.sol";
 
 contract DecolyzeDAO is Proposals, Ownable {
-    
-    
 
     enum IdeaType {
         DAO,
@@ -50,28 +48,40 @@ contract DecolyzeDAO is Proposals, Ownable {
         _;
     }
 
-    function _addMemberToDAO() private {
-
+    modifier onlyNonMembers() {
+        require(members[msg.sender].joinedAt == 0, "ALREADY_MEMBER");
+        _;
     }
 
-    function createProposal(ProposalType _proposalType, string memory _name, string[] memory _skills) external {
+    function _addMemberToDAO() private onlyNonMembers {
+        require(candidates[msg.sender].requestTime != 0, "NOT_A_CANDIDATE");
+        Member storage member = members[msg.sender];
+        member.joinedAt = block.timestamp;
+        member.name = candidates[msg.sender].name;
+        member.skills = candidates[msg.sender].skills;
+    }
+
+    function createProposal(ProposalType _proposalType, string memory _name, string[] memory _skills) external onlyNonMembers {
 
         Proposal storage proposal = proposals[totalProposalCount];
         proposal.deadline = block.timestamp + 7 days;
         proposal.proposalType = _proposalType;
         
         if (_proposalType == ProposalType.MEMBERSHIP) {
-            require(members[msg.sender].joinedAt == 0, "ALREADY_MEMBER");
-            require(candidates[msg.sender].requestTime == 0, "ALREADY_REQUESTED_MEMBERSHIP");
-            Candidates storage candidate = candidates[msg.sender];
-            candidate.name = _name;
-            candidate.requestTime = block.timestamp;
-            candidate.skills = _skills;
+            _createCandidate(_name, _skills);
         }
 
         memberProposalCount[msg.sender]++;
 
         _createNewProposal(proposal);
+    }
+
+    function _createCandidate(string memory _name, string[] memory _skills) private onlyNonMembers {
+        require(candidates[msg.sender].requestTime == 0, "ALREADY_REQUESTED_MEMBERSHIP");
+        Candidates storage candidate = candidates[msg.sender];
+        candidate.name = _name;
+        candidate.requestTime = block.timestamp;
+        candidate.skills = _skills;
     }
 
     function voteOnProposal(uint256 _proposalID, VoteType _vote) external membersOnly {
@@ -87,7 +97,6 @@ contract DecolyzeDAO is Proposals, Ownable {
 
         if (proposal.proposalType == ProposalType.MEMBERSHIP) {
             if (proposal.yesVotes > proposal.noVotes) {
-                require(members[msg.sender].joinedAt == 0, "ALREADY_MEMBER");
                 _addMemberToDAO();
             }
         }
@@ -102,7 +111,7 @@ contract DecolyzeDAO is Proposals, Ownable {
     }
 
 
-    function addFirstMembers(address _newMember ,string calldata _name, string[] calldata _skills) external onlyOwner {
+    function addFirstMembers(address _newMember ,string calldata _name, string[] calldata _skills) external onlyOwner onlyNonMembers {
         require(firstTenMembers <= 9, "INITIAL_MEMBERSHIP_DONE");
         Member storage member = members[_newMember];
         member.joinedAt = block.timestamp;
